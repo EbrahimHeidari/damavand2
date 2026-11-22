@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>داشبورد آمادگی راه‌اندازی RFSU</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<style>
+:root{--bg:#eef1f4;--surface:#fff;--ink:#16202b;--mute:#5d6b7a;--line:#d5dbe2;--ok:#157a4a;--okbg:#dff3e7;--warn:#a65d00;--warnbg:#fdeccf;--bad:#b3261e;--badbg:#fbe0dd;--acc:#1f4e79;--accbg:#dce8f3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10161d;--surface:#18212b;--ink:#e6ebf0;--mute:#93a1b0;--line:#2b3744;--ok:#5fd29a;--okbg:#14382a;--warn:#f0b255;--warnbg:#3e2c0e;--bad:#ff8f86;--badbg:#431a17;--acc:#7db4e6;--accbg:#18344d}}
+:root[data-theme="dark"]{--bg:#10161d;--surface:#18212b;--ink:#e6ebf0;--mute:#93a1b0;--line:#2b3744;--ok:#5fd29a;--okbg:#14382a;--warn:#f0b255;--warnbg:#3e2c0e;--bad:#ff8f86;--badbg:#431a17;--acc:#7db4e6;--accbg:#18344d}
+html,body{height:auto}body{background:var(--bg);color:var(--ink);font-family:'Vazirmatn',Tahoma,sans-serif;margin:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.mute{color:var(--mute)}.tag{font-family:ui-monospace,Menlo,monospace;direction:ltr;display:inline-block}
+.badge{display:inline-block;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:600;white-space:nowrap}
+.b-ok{background:var(--okbg);color:var(--ok)}.b-warn{background:var(--warnbg);color:var(--warn)}.b-bad{background:var(--badbg);color:var(--bad)}.b-acc{background:var(--accbg);color:var(--acc)}
+.btn{border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--acc)}.btn:disabled{opacity:.45;cursor:not-allowed}.btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn-p{background:var(--acc);color:var(--surface);border-color:var(--acc)}
+.btn-r{background:var(--bad);color:var(--surface);border-color:var(--bad)}
+.scroll{overflow-x:auto}th{font-weight:600;color:var(--mute);font-size:12px;text-align:right;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:8px 10px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+.bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.bar>i{display:block;height:100%;background:var(--ok);transition:width .5s}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+const { useState } = React;
+const html = htm.bind(React.createElement);
+const fa = (n, d = 0) => Number(n).toLocaleString('fa-IR', { maximumFractionDigits: d });
+const VIB_LIMIT = 3.0;
+const ROTATING = ['Pump', 'Compressor'];
+
+const INITIAL = [
+ {tag:'V-101',type:'ستون تقطیر خلأ',unit:'CDU-01',std:'ASME VIII Div 1',a:0,b:4,vib:0,qa:'Approved',st:'Ready-for-Feed'},
+ {tag:'E-102A',type:'مبدل پیش‌گرمکن نفت خام',unit:'CDU-01',std:'TEMA-R / ASME VIII',a:0,b:2,vib:0,qa:'Approved',st:'Hydrotested'},
+ {tag:'E-102B',type:'مبدل پیش‌گرمکن نفت خام',unit:'CDU-01',std:'TEMA-R / ASME VIII',a:1,b:3,vib:0,qa:'Pending-Gasket-Fix',st:'Punch-Clearance'},
+ {tag:'P-105A',type:'پمپ خوراک (الکتروموتوری)',unit:'Offsites',std:'API 610 11th',a:0,b:1,vib:2.1,qa:'Approved',st:'Cold-Commissioned',rot:1},
+ {tag:'P-105B',type:'پمپ خوراک (توربینی)',unit:'Offsites',std:'API 610 11th',a:2,b:5,vib:4.8,qa:'Rejected-Alignment',st:'Field-Rework',rot:1},
+ {tag:'C-201',type:'کمپرسور گاز سانتریفیوژ',unit:'HDT-02',std:'API 617 8th',a:1,b:6,vib:1.8,qa:'Pending-Lube-Oil-Flush',st:'Pre-commissioning',rot:1},
+ {tag:'TK-301',type:'مخزن سقف شناور',unit:'Tank-Farm',std:'API 650 12th',a:0,b:3,vib:0,qa:'Approved',st:'Settlement-Tested'},
+ {tag:'R-401',type:'راکتور هیدروتریتر (Cr-Mo-V)',unit:'HDT-02',std:'ASME VIII Div 2',a:0,b:1,vib:0,qa:'Approved',st:'Catalyst-Loading'}
+];
+const UNITS = [['CDU-01','CDU'],['HDT-02','HDT'],['Offsites','Offsites'],['Tank-Farm','Tank Farm']];
+const isReady = e => e.qa === 'Approved' && e.a === 0 && (!e.rot || e.vib <= VIB_LIMIT);
+const qaBadge = e => e.qa === 'Approved' ? 'b-ok' : e.qa.startsWith('Rejected') ? 'b-bad' : 'b-warn';
+const qaFa = {Approved:'تایید شده','Pending-Gasket-Fix':'در انتظار اصلاح گسکت','Rejected-Alignment':'رد شده - ناترازی','Pending-Lube-Oil-Flush':'در انتظار فلاشینگ روغن'};
+
+function Card({ label, value, sub, tone }) {
+  return html`<div class="panel p-4" style=${{borderTop:'4px solid var(--' + tone + ')'}}>
+    <div class="mute text-sm">${label}</div>
+    <div class="text-3xl font-extrabold mt-1" style=${{color:'var(--' + tone + ')'}}>${value}</div>
+    <div class="mute text-xs mt-1">${sub}</div></div>`;
+}
+
+function App() {
+  const [eq, setEq] = useState(INITIAL);
+  const [log, setLog] = useState(['شبیه‌سازی آغاز شد؛ داده‌ها مطابق CSV پروژه بارگذاری شد.']);
+  const note = m => setLog(l => [m, ...l].slice(0, 6));
+  const upd = (tag, fn) => setEq(list => list.map(e => e.tag === tag ? fn(e) : e));
+
+  const approvedCount = eq.filter(e => e.qa === 'Approved').length;
+  const blockers = eq.reduce((s, e) => s + e.a, 0);
+  const rot = eq.filter(e => e.rot);
+  const avgVib = rot.reduce((s, e) => s + e.vib, 0) / rot.length;
+  const readyCount = eq.filter(isReady).length;
+  const feedPct = readyCount / eq.length * 100;
+  const p = eq.find(e => e.tag === 'P-105B');
+
+  const approve = tag => {
+    const e = eq.find(x => x.tag === tag);
+    if (e.rot && e.vib > VIB_LIMIT) { note(tag + ': تایید مسدود شد؛ ارتعاش ' + fa(e.vib, 1) + ' بالاتر از حد ' + fa(VIB_LIMIT, 1) + ' است. ابتدا ترازیابی مجدد.'); return; }
+    upd(tag, x => ({ ...x, a: 0, qa: 'Approved', st: 'Ready-for-Startup' }));
+    note(tag + ': پانچ‌های گروه A بسته شد و وضعیت به Ready for Startup رسید.');
+  };
+  const approveAll = () => {
+    let skipped = [];
+    setEq(list => list.map(e => {
+      if (e.qa === 'Approved' && e.a === 0 && e.st === 'Ready-for-Startup') return e;
+      if (e.rot && e.vib > VIB_LIMIT) { skipped.push(e.tag); return e; }
+      return { ...e, a: 0, qa: 'Approved', st: 'Ready-for-Startup' };
+    }));
+    note('تایید گروهی انجام شد' + (p.vib > VIB_LIMIT ? ' (P-105B به دلیل ارتعاش مسدود ماند).' : '.'));
+  };
+  const realign = () => {
+    upd('P-105B', e => ({ ...e, vib: 2.4, qa: 'Pending-Re-Test', st: 'Run-Test-Pending' }));
+    note('P-105B: ترازیابی لیزری و اصلاح (شبیه‌سازی) انجام شد؛ ارتعاش به ۲٫۴ mm/s رسید. در انتظار تایید نهایی.');
+  };
+  const reset = () => { setEq(INITIAL); setLog(['وضعیت به داده‌های اولیه بازگشت.']); };
+
+  return html`<div class="max-w-6xl mx-auto p-4 md:p-6 space-y-5">
+    <header class="flex flex-wrap items-end justify-between gap-3">
+      <div><h1 class="text-2xl font-extrabold">آمادگی راه‌اندازی (RFSU)</h1>
+      <p class="mute text-sm">پیش‌راه‌اندازی و QA/QC - واحدهای CDU، HDT، Offsites و Tank Farm</p></div>
+      <div class="flex gap-2">
+        <button class="btn btn-p" onClick=${approveAll}>تایید همه پانچ‌های مجاز</button>
+        <button class="btn" onClick=${reset}>بازنشانی</button></div>
+    </header>
+
+    <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <${Card} label="تجهیزات تایید شده" value=${fa(approvedCount) + ' از ' + fa(eq.length)} sub="QA/QC Signoff = Approved" tone="acc"/>
+      <${Card} label="پانچ گروه A (مسدودکننده)" value=${fa(blockers)} sub=${blockers ? 'تا بسته نشوند راه‌اندازی ممکن نیست' : 'هیچ مانعی باقی نمانده'} tone=${blockers ? 'bad' : 'ok'}/>
+      <${Card} label="میانگین ارتعاش تجهیزات دوار" value=${fa(avgVib, 1) + ' mm/s'} sub=${'P-105A/B و C-201 - حد پمپ: ' + fa(VIB_LIMIT, 1)} tone=${avgVib > VIB_LIMIT ? 'bad' : 'warn'}/>
+      <div class="panel p-4" style=${{borderTop:'4px solid var(--ok)'}}>
+        <div class="mute text-sm">آمادگی تزریق خوراک</div>
+        <div class="text-3xl font-extrabold mt-1" style=${{color:'var(--ok)'}}>${fa(feedPct, 1)}٪</div>
+        <div class="bar mt-2"><i style=${{width:feedPct + '%'}}></i></div>
+        <div class="mute text-xs mt-1">${fa(readyCount)} تجهیز: تایید شده، بدون پانچ A</div></div>
+    </section>
+
+    <section class="panel">
+      <div class="p-4 pb-2"><h2 class="font-extrabold text-lg">پانچ‌لیست به تفکیک واحد</h2></div>
+      <div class="scroll"><table class="w-full">
+        <thead><tr><th>تگ</th><th>تجهیز</th><th>استاندارد</th><th>گروه A</th><th>گروه B</th><th>ارتعاش</th><th>QA/QC</th><th>وضعیت</th><th>اقدام</th></tr></thead>
+        <tbody>${UNITS.map(([key, name]) => {
+          const items = eq.filter(e => e.unit === key);
+          const a = items.reduce((s, e) => s + e.a, 0), b = items.reduce((s, e) => s + e.b, 0);
+          return html`<${React.Fragment} key=${key}>
+            <tr style=${{background:'var(--bg)'}}><td colspan="9"><b>${name}</b>
+              <span class="mute"> - ${fa(items.length)} تجهیز</span>
+              <span class=${'badge mx-2 ' + (a ? 'b-bad' : 'b-ok')}>گروه A: ${fa(a)}</span>
+              <span class="badge b-warn">گروه B: ${fa(b)}</span></td></tr>
+            ${items.map(e => html`<tr key=${e.tag}>
+              <td><b class="tag">${e.tag}</b></td><td>${e.type}</td><td><span class="tag mute text-xs">${e.std}</span></td>
+              <td><span class=${'badge ' + (e.a ? 'b-bad' : 'b-ok')}>${fa(e.a)}</span></td>
+              <td><span class="badge b-warn">${fa(e.b)}</span></td>
+              <td>${e.rot ? html`<span class=${'badge ' + (e.vib > VIB_LIMIT ? 'b-bad' : 'b-ok')}>${fa(e.vib, 1)}</span>` : html`<span class="mute">-</span>`}</td>
+              <td><span class=${'badge ' + qaBadge(e)}>${qaFa[e.qa] || e.qa}</span></td>
+              <td><span class=${'badge ' + (e.st === 'Ready-for-Startup' ? 'b-ok' : 'b-acc')}><span class="tag">${e.st}</span></span></td>
+              <td><button class="btn" disabled=${e.st === 'Ready-for-Startup'} onClick=${() => approve(e.tag)}>
+                ${e.st === 'Ready-for-Startup' ? 'آماده' : 'بستن پانچ A و تایید'}</button></td></tr>`)}
+          <//>`;
+        })}</tbody></table></div>
+    </section>
+
+    <section class="panel p-4" style=${{borderRight:'6px solid var(--bad)'}}>
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="font-extrabold text-lg" style=${{color:'var(--bad)'}}>هشدار عدم انطباق: پمپ <span class="tag">P-105B</span></h2>
+        <span class=${'badge ' + (p.vib > VIB_LIMIT ? 'b-bad' : 'b-ok')}>ارتعاش فعلی: ${fa(p.vib, 1)} mm/s</span>
+        <span class=${'badge ' + qaBadge(p)}>${qaFa[p.qa] || p.qa}</span>
+      </div>
+      <div class="grid md:grid-cols-2 gap-5 mt-3 text-sm leading-7">
+        <div>
+          <h3 class="font-extrabold mb-1">چرا رد شد؟</h3>
+          <p>پمپ توربینی خوراک با ارتعاش ${fa(4.8, 1)} mm/s (RMS) تست شد. حد پذیرش معمول API 610 برای پمپ‌های افقی در ناحیه عملکرد ترجیحی حدود ${fa(3.0, 1)} mm/s است، یعنی حدود ۶۰٪ بیشتر از حد. عدد دقیق باید با دیتاشیت و مشخصات پروژه تطبیق داده شود.</p>
+          <p class="mt-2">با توجه به رد شدن با کد «ناترازی»، محتمل‌ترین علت ناترازی کوپلینگ پمپ و توربین است. نکته مهم در پمپ توربینی: رشد حرارتی بخار باعث جابه‌جایی محور در حالت گرم می‌شود و ترازیابی سرد بدون جبران آن کافی نیست. داده طیف فرکانسی در اختیار من نیست؛ غلبه ۲× دور محور تشخیص را تایید می‌کند.</p>
+          <p class="mt-2">پیامد: پانچ‌های گروه A باز (${fa(p.a)}) و حذف از مسیر تزریق خوراک تا اصلاح و تست مجدد.</p>
+        </div>
+        <div>
+          <h3 class="font-extrabold mb-1">راهکار رفع ناترازی (مطابق رویه API 610 / API 686)</h3>
+          <ol class="list-decimal pr-5 space-y-1">
+            <li>قفل‌کردن و ایزولاسیون، باز کردن کوپلینگ و ثبت وضعیت As-Found با لیزر.</li>
+            <li>بررسی Soft Foot روی پایه‌های پمپ و توربین؛ اصلاح با شیم تا کمتر از حدود ۰٫۰۵ mm.</li>
+            <li>بررسی کرنش لوله (Pipe Strain): با باز و بسته کردن فلنج‌های مکش و دهش، تغییر عقربه ساعت‌اندازه‌گیر کمتر از ۰٫۰۵ mm؛ در صورت تجاوز، اصلاح تکیه‌گاه‌ها و بررسی بارهای نازل.</li>
+            <li>بررسی سطح و کیفیت گروت بیس‌پلیت و ایستادگی پیچ‌های فونداسیون.</li>
+            <li>ترازیابی لیزری با اعمال افست رشد حرارتی از دیتاشیت سازنده توربین (Hot Alignment Offset) و رعایت تلورانس سازنده کوپلینگ.</li>
+            <li>انجام Run-in بدون بار و تست مجدد با ثبت ارتعاش در هر دو یاتاقان؛ تایید Cat A فقط با رسیدن به حد پذیرش و امضای QA/QC.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-4">
+        <button class="btn btn-r" disabled=${p.vib <= VIB_LIMIT} onClick=${realign}>اجرای ترازیابی مجدد (شبیه‌سازی)</button>
+        <button class="btn btn-p" disabled=${p.st === 'Ready-for-Startup'} onClick=${() => approve('P-105B')}>بستن پانچ‌ها و تایید P-105B</button>
+      </div>
+    </section>
+
+    <section class="panel p-4">
+      <h2 class="font-extrabold text-sm mb-2">گزارش رویدادها</h2>
+      <ul class="text-sm mute space-y-1">${log.map((m, i) => html`<li key=${i + m}>${m}</li>`)}</ul>
+    </section>
+  </div>`;
+}
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
